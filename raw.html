@@ -28,12 +28,17 @@ let cursorX = 0;
 let cursorY = 0;
 let image = null;
 let imageVisible = true;
+let soundEnabled = true; // Track whether sound is enabled
 
 let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let currentOscillator = null; // Store the currently playing oscillator
 
 // Store image data separately so we can sonify even if the image is hidden
 let cachedImageData = null;
+
+// Define global RGB values
+const low = [0, 0, 128];
+const high = [255, 0, 0];
 
 // File upload handler
 document.getElementById('fileInput').addEventListener('change', handleFileUpload);
@@ -66,7 +71,7 @@ function drawCanvas() {
     drawCursor();
 }
 
-// Draw filled cursor block with black
+// Draw filled cursor block with thick black border
 function drawCursor() {
     ctx.fillStyle = 'rgba(0, 0, 0, 1)';
     ctx.fillRect(cursorX, cursorY, cursorSize, cursorSize);
@@ -75,15 +80,19 @@ function drawCursor() {
     ctx.strokeRect(cursorX, cursorY, cursorSize, cursorSize);
 }
 
-// Move cursor, redraw canvas, and play sound
+// Move cursor, redraw canvas, and play sound if enabled
 function moveCursor(dx, dy) {
     cursorX = Math.max(0, Math.min(canvas.width - cursorSize, cursorX + dx * cursorStep));
     cursorY = Math.max(0, Math.min(canvas.height - cursorSize, cursorY + dy * cursorStep));
 
     drawCanvas();
 
-    const avgBrightness = getAverageBrightnessFromCache(cursorX, cursorY, cursorSize);
-    playContinuousSoundForValue(avgBrightness);
+    const closeness = getAverageColorCloseness(cursorX, cursorY, cursorSize);
+    if (soundEnabled) {
+        playContinuousSoundForValue(closeness);
+    } else {
+        stopCurrentSound();
+    }
 }
 
 // Read brightness directly from cached image data
@@ -108,19 +117,41 @@ function getAverageBrightnessFromCache(x, y, size) {
     return totalBrightness / pixelCount;
 }
 
-// Play continuous sound based on brightness, stopping previous sound
-function playContinuousSoundForValue(value) {
-    if (currentOscillator) {
-        currentOscillator.stop();
-        currentOscillator.disconnect();
+// Calculate average color closeness to low and high (rescaled to 0-1)
+function getAverageColorCloseness(x, y, size) {
+    if (!cachedImageData) return 0; // Fallback if no image loaded
+
+    let totalCloseness = 0;
+    let pixelCount = 0;
+
+    for (let row = 0; row < size; row++) {
+        for (let col = 0; col < size; col++) {
+            const pixelIndex = ((y + row) * canvas.width + (x + col)) * 4;
+            const r = cachedImageData.data[pixelIndex];
+            const g = cachedImageData.data[pixelIndex + 1];
+            const b = cachedImageData.data[pixelIndex + 2];
+
+            const distanceLow = Math.sqrt(Math.pow(r - low[0], 2) + Math.pow(g - low[1], 2) + Math.pow(b - low[2], 2));
+            const distanceHigh = Math.sqrt(Math.pow(r - high[0], 2) + Math.pow(g - high[1], 2) + Math.pow(b - high[2], 2));
+            const closeness = distanceLow / (distanceLow + distanceHigh); // Rescale to 0-1
+            totalCloseness += closeness;
+            pixelCount++;
+        }
     }
+
+    return totalCloseness / pixelCount;
+}
+
+// Play continuous sound based on closeness, stopping previous sound
+function playContinuousSoundForValue(value) {
+    stopCurrentSound();
 
     const oscillator = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
 
     const minFrequency = 100;
     const maxFrequency = 1000;
-    const pitch = minFrequency + (value / 255) * (maxFrequency - minFrequency);
+    const pitch = minFrequency + value * (maxFrequency - minFrequency);
 
     oscillator.type = 'sine';
     oscillator.frequency.setValueAtTime(pitch, audioCtx.currentTime);
@@ -132,6 +163,15 @@ function playContinuousSoundForValue(value) {
     currentOscillator = oscillator;
 }
 
+// Stop current oscillator if playing
+function stopCurrentSound() {
+    if (currentOscillator) {
+        currentOscillator.stop();
+        currentOscillator.disconnect();
+        currentOscillator = null;
+    }
+}
+
 // WASD + Arrow Key movement handling
 window.addEventListener('keydown', (e) => {
     switch (e.key) {
@@ -140,6 +180,7 @@ window.addEventListener('keydown', (e) => {
         case 's': case 'ArrowDown': moveCursor(0, 1); break;
         case 'd': case 'ArrowRight': moveCursor(1, 0); break;
         case 'p': toggleImageVisibility(); break;
+        case 'm': toggleSound(); break;
     }
 });
 
@@ -147,6 +188,14 @@ window.addEventListener('keydown', (e) => {
 function toggleImageVisibility() {
     imageVisible = !imageVisible;
     drawCanvas();
+}
+
+// Toggle sound on/off
+function toggleSound() {
+    soundEnabled = !soundEnabled;
+    if (!soundEnabled) {
+        stopCurrentSound();
+    }
 }
 
 toggleVisibilityButton.addEventListener('click', toggleImageVisibility);
