@@ -70,6 +70,8 @@ window.onload = () => {
 document.getElementById('fileInput').addEventListener('change', handleFileUpload);
 
 function handleFileUpload(event) {
+    cursorX = 0; // Reset cursor position when a new image is uploaded
+    cursorY = 0; // Reset cursor position when a new image is uploaded
     const file = event.target.files[0];
     if (!file) return;
 
@@ -82,6 +84,7 @@ function handleFileUpload(event) {
             canvas.height = image.height;
             ctx.drawImage(image, 0, 0);
             cachedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height); // Cache original image data
+            triggerInitialSound(); // Trigger initial sound after new image is uploaded
             drawCanvas();
         };
     };
@@ -197,6 +200,9 @@ function toggleSound() {
     soundEnabled = !soundEnabled;
     if (!soundEnabled) {
         stopCurrentSound();
+    }
+    if (soundEnabled) {
+        moveCursor(0, 0) // start play the sound after clicking M
     }
 }
 
