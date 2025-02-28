@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Heatmap Sonification Demo</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            display: block;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Upload Heatmap Image</h2>
+<input type="file" id="fileInput" accept="image/*">
+<canvas id="heatmapCanvas"></canvas>
+<button id="toggleVisibilityButton">Toggle Image Visibility (P)</button>
+
+<script>
+const canvas = document.getElementById('heatmapCanvas');
+const ctx = canvas.getContext('2d');
+const toggleVisibilityButton = document.getElementById('toggleVisibilityButton');
+
+const cursorSize = 72; // Updated to 72px for visually impaired users
+let cursorX = 0;
+let cursorY = 0;
+let image = null;
+let imageVisible = true;
+
+let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let currentOscillator = null; // Store the currently playing oscillator
+
+// Store image data separately so we can sonify even if the image is hidden
+let cachedImageData = null;
+
+// File upload handler
+document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        image = new Image();
+        image.src = e.target.result;
+        image.onload = () => {
+            canvas.width = image.width;
+            canvas.height = image.height;
+            ctx.drawImage(image, 0, 0);
+            cachedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height); // Cache original image data
+            drawCanvas();
+        };
+    };
+    reader.readAsDataURL(file);
+}
+
+// Draw canvas (optional image + cursor)
+function drawCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (imageVisible && image) {
+        ctx.putImageData(cachedImageData, 0, 0); // Draw cached image data if visible
+    }
+    drawCursor();
+}
+
+// Draw filled cursor block with thick red border
+function drawCursor() {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)'; // Semi-transparent red fill
+    ctx.fillRect(cursorX, cursorY, cursorSize, cursorSize);
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(cursorX, cursorY, cursorSize, cursorSize);
+}
+
+// Move cursor, redraw canvas, and play sound
+function moveCursor(dx, dy) {
+    cursorX = Math.max(0, Math.min(canvas.width - cursorSize, cursorX + dx * cursorSize));
+    cursorY = Math.max(0, Math.min(canvas.height - cursorSize, cursorY + dy * cursorSize));
+
+    drawCanvas();
+
+    const avgBrightness = getAverageBrightnessFromCache(cursorX, cursorY, cursorSize);
+    playContinuousSoundForValue(avgBrightness);
+}
+
+// Read brightness directly from cached image data
+function getAverageBrightnessFromCache(x, y, size) {
+    if (!cachedImageData) return 0; // Fallback if no image loaded
+
+    let totalBrightness = 0;
+    let pixelCount = 0;
+
+    for (let row = 0; row < size; row++) {
+        for (let col = 0; col < size; col++) {
+            const pixelIndex = ((y + row) * canvas.width + (x + col)) * 4;
+            const r = cachedImageData.data[pixelIndex];
+            const g = cachedImageData.data[pixelIndex + 1];
+            const b = cachedImageData.data[pixelIndex + 2];
+            const brightness = (r + g + b) / 3;
+            totalBrightness += brightness;
+            pixelCount++;
+        }
+    }
+
+    return totalBrightness / pixelCount;
+}
+
+// Play continuous sound based on brightness, stopping previous sound
+function playContinuousSoundForValue(value) {
+    if (currentOscillator) {
+        currentOscillator.stop();
+        currentOscillator.disconnect();
+    }
+
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    const minFrequency = 100;
+    const maxFrequency = 1000;
+    const pitch = minFrequency + (value / 255) * (maxFrequency - minFrequency);
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(pitch, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+
+    oscillator.connect(gainNode).connect(audioCtx.destination);
+
+    oscillator.start();
+    currentOscillator = oscillator;
+}
+
+// WASD + Arrow Key movement handling
+window.addEventListener('keydown', (e) => {
+    switch (e.key) {
+        case 'w': case 'ArrowUp': moveCursor(0, -1); break;
+        case 'a': case 'ArrowLeft': moveCursor(-1, 0); break;
+        case 's': case 'ArrowDown': moveCursor(0, 1); break;
+        case 'd': case 'ArrowRight': moveCursor(1, 0); break;
+        case 'p': toggleImageVisibility(); break;
+    }
+});
+
+// Toggle image visibility
+function toggleImageVisibility() {
+    imageVisible = !imageVisible;
+    drawCanvas();
+}
+
+toggleVisibilityButton.addEventListener('click', toggleImageVisibility);
+</script>
+
+</body>
+</html>
