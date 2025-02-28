@@ -23,6 +23,7 @@ const ctx = canvas.getContext('2d');
 const toggleVisibilityButton = document.getElementById('toggleVisibilityButton');
 
 const cursorSize = 72; // Updated to 72px for visually impaired users
+const cursorStep = cursorSize / 4; // Move 1/4 block for finer control
 let cursorX = 0;
 let cursorY = 0;
 let image = null;
@@ -67,17 +68,17 @@ function drawCanvas() {
 
 // Draw filled cursor block with thick red border
 function drawCursor() {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)'; // Semi-transparent red fill
+    ctx.fillStyle = 'rgba(0, 0, 0, 1)';
     ctx.fillRect(cursorX, cursorY, cursorSize, cursorSize);
-    ctx.strokeStyle = 'black';
+    ctx.strokeStyle = 'rgba(0, 0, 0, 1)';
     ctx.lineWidth = 4;
     ctx.strokeRect(cursorX, cursorY, cursorSize, cursorSize);
 }
 
 // Move cursor, redraw canvas, and play sound
 function moveCursor(dx, dy) {
-    cursorX = Math.max(0, Math.min(canvas.width - cursorSize, cursorX + dx * cursorSize));
-    cursorY = Math.max(0, Math.min(canvas.height - cursorSize, cursorY + dy * cursorSize));
+    cursorX = Math.max(0, Math.min(canvas.width - cursorSize, cursorX + dx * cursorStep));
+    cursorY = Math.max(0, Math.min(canvas.height - cursorSize, cursorY + dy * cursorStep));
 
     drawCanvas();
 
