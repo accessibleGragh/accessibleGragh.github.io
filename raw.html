@@ -26,7 +26,7 @@ const cursorSize = 72; // Updated to 72px for visually impaired users
 const cursorStep = cursorSize / 4; // Move 1/4 block for finer control
 let cursorX = 0;
 let cursorY = 0;
-let image = null;
+let image = new Image();
 let imageVisible = true;
 let soundEnabled = true; // Track whether sound is enabled
 
@@ -39,6 +39,32 @@ let cachedImageData = null;
 // Define global RGB values
 const low = [0, 0, 128];
 const high = [255, 0, 0];
+
+// Simulate image upload from URL (default image)
+function simulateImageUploadFromURL(url) {
+    image = new Image();
+    image.crossOrigin = 'Anonymous'; // Required if the image is hosted on another domain
+    image.src = url;
+    image.onload = () => {
+        canvas.width = image.width;
+        canvas.height = image.height;
+        ctx.drawImage(image, 0, 0);
+        cachedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        drawCanvas();
+        triggerInitialSound();
+    };
+}
+
+// Trigger initial sound after loading default image
+function triggerInitialSound() {
+    const closeness = getAverageColorCloseness(cursorX, cursorY, cursorSize);
+    playContinuousSoundForValue(closeness);
+}
+
+// Call the simulation on page load
+window.onload = () => {
+    simulateImageUploadFromURL('https://accessiblegragh.github.io/example_small.png');
+};
 
 // File upload handler
 document.getElementById('fileInput').addEventListener('change', handleFileUpload);
@@ -65,8 +91,8 @@ function handleFileUpload(event) {
 // Draw canvas (optional image + cursor)
 function drawCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (imageVisible && image) {
-        ctx.putImageData(cachedImageData, 0, 0); // Draw cached image data if visible
+    if (imageVisible && cachedImageData) {
+        ctx.drawImage(image, 0, 0);
     }
     drawCursor();
 }
@@ -95,31 +121,9 @@ function moveCursor(dx, dy) {
     }
 }
 
-// Read brightness directly from cached image data
-function getAverageBrightnessFromCache(x, y, size) {
-    if (!cachedImageData) return 0; // Fallback if no image loaded
-
-    let totalBrightness = 0;
-    let pixelCount = 0;
-
-    for (let row = 0; row < size; row++) {
-        for (let col = 0; col < size; col++) {
-            const pixelIndex = ((y + row) * canvas.width + (x + col)) * 4;
-            const r = cachedImageData.data[pixelIndex];
-            const g = cachedImageData.data[pixelIndex + 1];
-            const b = cachedImageData.data[pixelIndex + 2];
-            const brightness = (r + g + b) / 3;
-            totalBrightness += brightness;
-            pixelCount++;
-        }
-    }
-
-    return totalBrightness / pixelCount;
-}
-
 // Calculate average color closeness to low and high (rescaled to 0-1)
 function getAverageColorCloseness(x, y, size) {
-    if (!cachedImageData) return 0; // Fallback if no image loaded
+    if (!cachedImageData) return 0;
 
     let totalCloseness = 0;
     let pixelCount = 0;
@@ -184,13 +188,11 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-// Toggle image visibility
 function toggleImageVisibility() {
     imageVisible = !imageVisible;
     drawCanvas();
 }
 
-// Toggle sound on/off
 function toggleSound() {
     soundEnabled = !soundEnabled;
     if (!soundEnabled) {
