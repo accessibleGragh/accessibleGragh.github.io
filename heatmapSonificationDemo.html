@@ -20,11 +20,14 @@
 <h2>Upload Heatmap Image</h2>
 <input type="file" id="fileInput" accept="image/*">
 <canvas id="heatmapCanvas"></canvas>
+<canvas id="magnifier"></canvas>
 <button id="toggleVisibilityButton">Toggle Image Visibility (P)</button>
 
 <script>
 const canvas = document.getElementById('heatmapCanvas');
+const magnifier = document.getElementById('magnifier');
 const ctx = canvas.getContext('2d');
+const magCtx = magnifier.getContext('2d');
 const toggleVisibilityButton = document.getElementById('toggleVisibilityButton');
 
 const cursorSize = 72; // Updated to 72px for visually impaired users
@@ -32,8 +35,12 @@ const cursorStep = cursorSize / 4; // Move 1/4 block for finer control
 let cursorX = 0;
 let cursorY = 0;
 let image = new Image();
+let magImage = new Image(); //image for magnifier
 let imageVisible = true;
 let soundEnabled = true; // Track whether sound is enabled
+let magnify = 4;
+magnifier.width = magnify * cursorSize;
+magnifier.height = magnify * cursorSize;
 
 let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let currentOscillator = null; // Store the currently playing oscillator
@@ -99,8 +106,10 @@ function handleFileUpload(event) {
 // Draw canvas (optional image + cursor)
 function drawCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    magCtx.clearRect(0, 0, magnifier.width, magnifier.height);
     if (imageVisible && cachedImageData) {
         ctx.drawImage(image, 0, 0);
+        magCtx.drawImage(image, cursorX, cursorY, image.width * magnify, image.height * magnify);
     }
     drawCursor();
 }
