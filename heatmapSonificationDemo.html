@@ -106,11 +106,11 @@ function handleFileUpload(event) {
 // Draw canvas (optional image + cursor)
 function drawCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    magCtx.clearRect(0, 0, magnifier.width, magnifier.height);
     if (imageVisible && cachedImageData) {
         ctx.drawImage(image, 0, 0);
         magCtx.drawImage(image, cursorX, cursorY, image.width * magnify, image.height * magnify);
     }
+    drawMagnifier();
     drawCursor();
 }
 
@@ -122,6 +122,46 @@ function drawCursor() {
     ctx.lineWidth = 4;
     ctx.strokeRect(cursorX, cursorY, cursorSize, cursorSize);
 }
+
+function drawMagnifier() {
+    if (!cachedImageData) return;
+
+    const imageData = magCtx.createImageData(cursorSize, cursorSize);
+
+    for (let row = 0; row < cursorSize; row++) {
+        for (let col = 0; col < cursorSize; col++) {
+            const srcX = cursorX + col;
+            const srcY = cursorY + row;
+
+            if (srcX >= canvas.width || srcY >= canvas.height) continue;
+
+            const srcIndex = (srcY * canvas.width + srcX) * 4;
+            const dstIndex = (row * cursorSize + col) * 4;
+
+            imageData.data[dstIndex]     = cachedImageData.data[srcIndex];
+            imageData.data[dstIndex + 1] = cachedImageData.data[srcIndex + 1];
+            imageData.data[dstIndex + 2] = cachedImageData.data[srcIndex + 2];
+            imageData.data[dstIndex + 3] = cachedImageData.data[srcIndex + 3];
+        }
+    }
+
+    // Step 1: Draw raw data into a temporary canvas
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = cursorSize;
+    tempCanvas.height = cursorSize;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.putImageData(imageData, 0, 0);
+
+    // Step 2: Draw magnified version to main magnifier canvas
+    magCtx.clearRect(0, 0, magnifier.width, magnifier.height);
+    magCtx.imageSmoothingEnabled = false; // Keep pixel edges sharp
+    magCtx.drawImage(
+        tempCanvas,
+        0, 0, cursorSize, cursorSize,            // source: original pixel block
+        0, 0, magnifier.width, magnifier.height  // destination: magnified canvas
+    );
+}
+
 
 // Move cursor, redraw canvas, and play sound if enabled
 function moveCursor(dx, dy) {
