@@ -21,7 +21,22 @@
 <input type="file" id="fileInput" accept="image/*">
 <canvas id="heatmapCanvas"></canvas>
 <canvas id="magnifier"></canvas>
+<div>
+    <label>
+        Low Pitch Color:
+        <input type="text" id="lowColorInput" value="#000080">
+        <input type="color" id="lowColorPicker" value="#000080" aria-label="Low pitch color picker">
+    </label><br><br>
+
+    <label>
+        High Pitch Color:
+        <input type="text" id="highColorInput" value="#ff0000">
+        <input type="color" id="highColorPicker" value="#ff0000" aria-label="High pitch color picker">
+    </label>
+</div>
+
 <button id="toggleVisibilityButton">Toggle Image Visibility (P)</button>
+
 
 <script>
 const canvas = document.getElementById('heatmapCanvas');
@@ -260,6 +275,84 @@ function toggleSound() {
 }
 
 toggleVisibilityButton.addEventListener('click', toggleImageVisibility);
+
+function hexToRGB(hex) {
+    hex = hex.replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    return [r, g, b];
+}
+
+function rgbToHex([r, g, b]) {
+    if (typeof r !== 'number' || typeof g !== 'number' || typeof b !== 'number') return '#000000';
+    return '#' + [r, g, b].map(x => {
+        return Math.max(0, Math.min(255, x)).toString(16).padStart(2, '0');
+    }).join('');
+}
+
+
+function parseColor(str) {
+    const temp = document.createElement('div');
+    temp.style.color = str;
+    document.body.appendChild(temp);
+    const computed = getComputedStyle(temp).color;
+    document.body.removeChild(temp);
+
+    const match = computed.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/i);
+    if (!match) return null;
+
+    return [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])];
+}
+
+
+function setupColorBinding({ inputId, pickerId, targetArray }) {
+    const input = document.getElementById(inputId);
+    const picker = document.getElementById(pickerId);
+
+    // Helper to set RGB array + sync fields
+    const updateFromRGB = (rgb) => {
+        if (!rgb) return;
+        targetArray[0] = rgb[0];
+        targetArray[1] = rgb[1];
+        targetArray[2] = rgb[2];
+        const hex = rgbToHex(rgb);
+        picker.value = hex;
+        input.value = hex;
+    };
+
+    // Text input → color picker
+    input.addEventListener('change', () => {
+        const rgb = parseColor(input.value);
+        updateFromRGB(rgb);
+    });
+
+    // Color picker → text input
+    picker.addEventListener('input', () => {
+        const rgb = hexToRGB(picker.value);
+        updateFromRGB(rgb);
+    });
+
+    // Initialize both on page load
+    updateFromRGB(targetArray);
+}
+
+
+
+setupColorBinding({
+    inputId: 'lowColorInput',
+    pickerId: 'lowColorPicker',
+    targetArray: low
+});
+
+setupColorBinding({
+    inputId: 'highColorInput',
+    pickerId: 'highColorPicker',
+    targetArray: high
+});
+
+
 </script>
 
 </body>
