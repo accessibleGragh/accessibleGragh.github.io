@@ -11,6 +11,11 @@
         .large-text {
             font-size: 72pt;
         }
+        .display{
+            display:grid;
+            grid-template-columns: 2fr 1fr;
+        }
+
     </style>
 </head>
 <body>
@@ -19,8 +24,10 @@
 </div>
 <h2>Upload Heatmap Image</h2>
 <input type="file" id="fileInput" accept="image/*">
-<canvas id="heatmapCanvas"></canvas>
-<canvas id="magnifier"></canvas>
+<div class="display">
+    <canvas id="heatmapCanvas"></canvas>
+    <canvas id="magnifier"></canvas>
+</div>
 <div>
     <label>
         Low Pitch Color:
@@ -53,7 +60,7 @@ let image = new Image();
 let magImage = new Image(); //image for magnifier
 let imageVisible = true;
 let soundEnabled = true; // Track whether sound is enabled
-let magnify = 4;
+let magnify = 6;
 magnifier.width = magnify * cursorSize;
 magnifier.height = magnify * cursorSize;
 
