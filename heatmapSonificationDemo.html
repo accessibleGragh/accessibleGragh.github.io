@@ -1,8 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
     <title>Heatmap Sonification Demo</title>
     <style>
+        * {
+            font-family:"Roboto";
+        }
         canvas {
             border: 1px solid black;
             display: block;
@@ -15,6 +21,15 @@
             display:grid;
             grid-template-columns: 2fr 1fr;
         }
+        .heatmapCanvas{
+            max-width: 60vw;
+            max-height: 60vh;
+            width: auto;
+            height: auto;
+        }
+        .upload{
+            font-size: 65px;
+        }
 
     </style>
 </head>
@@ -23,17 +38,17 @@
     <a href=https://accessiblegragh.github.io/about_HSD.html>How to use</a><br>
 </div>
 <h2>Upload Heatmap Image</h2>
-<input type="file" id="fileInput" accept="image/*">
+<input type="file" id="fileInput" accept="image/*" class="upload">
 <div class="display">
     <canvas id="heatmapCanvas"></canvas>
     <canvas id="magnifier"></canvas>
 </div>
-<div>
+<div class="color-option">
     <label>
         Low Pitch Color:
         <input type="text" id="lowColorInput" value="#000080">
         <input type="color" id="lowColorPicker" value="#000080" aria-label="Low pitch color picker">
-    </label><br><br>
+    </label>
 
     <label>
         High Pitch Color:
@@ -57,6 +72,9 @@ const cursorStep = cursorSize / 4; // Move 1/4 block for finer control
 let cursorX = 0;
 let cursorY = 0;
 let image = new Image();
+image.style.width = "70vw";
+image.style.height= "70vh";
+// image.style.objectFit= cover;
 let magImage = new Image(); //image for magnifier
 let imageVisible = true;
 let soundEnabled = true; // Track whether sound is enabled
