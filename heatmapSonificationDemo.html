@@ -272,6 +272,59 @@ function stopCurrentSound() {
     }
 }
 
+function tts(text){
+    if (speechSynthesis.speaking || speechSynthesis.pending) {
+        return; // Don't speak if something is already going or queued
+    }
+    const wasSoundEnabled = soundEnabled; // Save current state
+    stopCurrentSound(); // Temporarily silence oscillator
+
+    const message = text;
+
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    utterance.lang = 'en-US';
+
+    utterance.onend = () => {
+        if (wasSoundEnabled) {
+            triggerInitialSound();
+        }
+    };
+
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utterance);
+}
+
+function ttsDetailedDescription() {
+    const percentX = ((cursorX + cursorSize / 2) / image.width * 100).toFixed(0);
+    const percentY = ((cursorY + cursorSize / 2) / image.height * 100).toFixed(0);
+
+    message = `Cursor centered at about ${percentX} percent across and ${percentY} percent down the image. With size ${cursorSize}`;
+
+    tts(message);
+}
+
+function ttsGeneralDescription() {
+    const width = image.width;
+    const height = image.height;
+
+    if (width > height) {
+        const ratio = (width / height).toFixed(2);
+        spokenRatio = `${ratio} by 1`;
+    } else if (height > width) {
+        const ratio = (height / width).toFixed(2);
+        spokenRatio = `1 by ${ratio}`;
+    } else {
+        spokenRatio = `1 by 1`;
+    }
+
+    const message = `The image aspect ratio is ${spokenRatio}. Image Width is ${width} pixels and height is ${height} pixels.`;
+
+    tts(message);
+}
+
 // WASD + Arrow Key movement handling
 window.addEventListener('keydown', (e) => {
     switch (e.key) {
@@ -281,6 +334,8 @@ window.addEventListener('keydown', (e) => {
         case 'd': case 'ArrowRight': moveCursor(1, 0); break;
         case 'p': toggleImageVisibility(); break;
         case 'm': toggleSound(); break;
+        case 'u': ttsGeneralDescription(); break;
+        case 'i': ttsDetailedDescription(); break;
     }
 });
 
