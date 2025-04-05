@@ -67,7 +67,7 @@ const ctx = canvas.getContext('2d');
 const magCtx = magnifier.getContext('2d');
 const toggleVisibilityButton = document.getElementById('toggleVisibilityButton');
 
-const cursorSize = 72; // Updated to 72px for visually impaired users
+let cursorSize = 72; // Updated to 72px for visually impaired users
 const cursorStep = cursorSize / 4; // Move 1/4 block for finer control
 let cursorX = 0;
 let cursorY = 0;
@@ -325,6 +325,58 @@ function ttsGeneralDescription() {
     tts(message);
 }
 
+function adjustCursorSize(factor) {
+    const imageWidth = image?.width || canvas.width;
+    const imageHeight = image?.height || canvas.height;
+
+    // Largest power of 2 ≤ min dimension
+    const maxBase = Math.floor(Math.log2(Math.min(imageWidth, imageHeight)));
+    const maxAllowedSize = Math.pow(2, maxBase);
+
+    let newSize = cursorSize;
+
+    if (factor > 1) {
+        newSize *= 2;
+    } else if (factor < 1) {
+        newSize /= 2;
+    }
+
+    // Clamp to power-of-two bounds
+    // Allow any integer size between 1 and max
+    newSize = Math.round(Math.max(1, Math.min(newSize, maxAllowedSize)));
+
+
+    // Don't proceed if size didn't change
+    if (newSize === cursorSize) return;
+
+    // Compute center of current cursor
+    const centerX = cursorX + cursorSize / 2;
+    const centerY = cursorY + cursorSize / 2;
+
+    // Update cursor size
+    cursorSize = newSize;
+
+    // Recalculate top-left position so new cursor is centered at same spot
+    cursorX = Math.round(centerX - cursorSize / 2);
+    cursorY = Math.round(centerY - cursorSize / 2);
+
+    // Clamp position so the full cursor fits in bounds
+    cursorX = Math.max(0, Math.min(cursorX, imageWidth - cursorSize));
+    cursorY = Math.max(0, Math.min(cursorY, imageHeight - cursorSize));
+
+    drawCanvas();
+
+    const closeness = getAverageColorCloseness(cursorX, cursorY, cursorSize);
+    if (soundEnabled) {
+        playContinuousSoundForValue(closeness);
+    }
+}
+
+
+
+
+
+
 // WASD + Arrow Key movement handling
 window.addEventListener('keydown', (e) => {
     switch (e.key) {
@@ -336,6 +388,8 @@ window.addEventListener('keydown', (e) => {
         case 'm': toggleSound(); break;
         case 'u': ttsGeneralDescription(); break;
         case 'i': ttsDetailedDescription(); break;
+        case 'k': adjustCursorSize(0.5); break;
+        case 'l': adjustCursorSize(2); break;
     }
 });
 
