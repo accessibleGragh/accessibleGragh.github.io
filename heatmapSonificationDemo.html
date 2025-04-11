@@ -92,6 +92,37 @@ let cachedImageData = null;
 const low = [0, 0, 128];
 const high = [255, 0, 0];
 
+function resizeImageIfTooLarge(originalImage, maxBrowserWidthRatio = 0.6, maxHeight = 512) {
+    const canvas = document.createElement('canvas');
+    const browserLimitWidth = Math.floor(window.innerWidth * maxBrowserWidthRatio);
+
+    // Only scale down if image exceeds target dimensions
+    const shouldResize = originalImage.width > browserLimitWidth || originalImage.height > maxHeight;
+
+    if (!shouldResize) {
+        // Return the original image as-is
+        return Promise.resolve(originalImage);
+    }
+
+    // Resize logic
+    const scaleRatio = Math.min(browserLimitWidth / originalImage.width, maxHeight / originalImage.height);
+    const newWidth = Math.round(originalImage.width * scaleRatio);
+    const newHeight = Math.round(originalImage.height * scaleRatio);
+
+    canvas.width = newWidth;
+    canvas.height = newHeight;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(originalImage, 0, 0, newWidth, newHeight);
+
+    const resizedImage = new Image();
+    resizedImage.src = canvas.toDataURL();
+
+    return new Promise(resolve => {
+        resizedImage.onload = () => resolve(resizedImage);
+    });
+}
+
 // Simulate image upload from URL (default image)
 function simulateImageUploadFromURL(url) {
     image = new Image();
@@ -122,24 +153,30 @@ window.onload = () => {
 document.getElementById('fileInput').addEventListener('change', handleFileUpload);
 
 function handleFileUpload(event) {
-    cursorX = 0; // Reset cursor position when a new image is uploaded
-    cursorY = 0; // Reset cursor position when a new image is uploaded
+    cursorX = 0;
+    cursorY = 0;
     const file = event.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (e) => {
-        image = new Image();
-        image.src = e.target.result;
-        image.onload = () => {
+        const rawImage = new Image();
+        rawImage.src = e.target.result;
+
+        rawImage.onload = async () => {
+            // Resize if needed before using it
+            image = await resizeImageIfTooLarge(rawImage);
+
             canvas.width = image.width;
             canvas.height = image.height;
             ctx.drawImage(image, 0, 0);
-            cachedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height); // Cache original image data
-            triggerInitialSound(); // Trigger initial sound after new image is uploaded
+            cachedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            triggerInitialSound();
             drawCanvas();
         };
     };
+
     reader.readAsDataURL(file);
 }
 
